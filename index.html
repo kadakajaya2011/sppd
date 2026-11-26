@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="id"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Aplikasi SPPD Desa</title>
+<style>
+:root{--bg:#f4f5f7;--card:#fff;--tx:#1b1f24;--mu:#667;--bd:#c9ced6;--ac:#1d5fd1;--hd:#e8ebf0;--bad:#c62828;--y:#ffc000;--g:#92d050;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#14171c;--card:#1e232a;--tx:#e8ebf0;--mu:#9aa;--bd:#3a424d;--ac:#6ea0ff;--hd:#2a313a;--bad:#ff7b7b}}
+*{box-sizing:border-box}html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--tx);font:14px/1.4 system-ui,Segoe UI,Arial,sans-serif}
+header{background:var(--card);border-bottom:1px solid var(--bd);padding:10px 14px;display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+header b{font-size:16px;margin-right:auto}
+button,select,input{font:inherit;color:var(--tx);background:var(--card);border:1px solid var(--bd);border-radius:6px;padding:6px 10px}
+button{cursor:pointer}button.p{background:var(--ac);color:#fff;border-color:var(--ac)}button.on{background:var(--ac);color:#fff}
+button.d{color:var(--bad)}
+main{max-width:980px;margin:0 auto;padding:12px}
+.bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;align-items:center}
+.wrap{overflow-x:auto;background:var(--card);border:1px solid var(--bd);border-radius:8px;padding:12px}
+.sheet{min-width:720px}
+.sheet h2{margin:0;text-align:center;font-size:20px;text-decoration:underline}
+.c{text-align:center;margin:2px 0}
+table{border-collapse:collapse;width:100%}
+th,td{border:1px solid var(--bd);padding:4px 6px}
+th{background:var(--hd);font-size:12px}
+td.n{text-align:right;white-space:nowrap}
+td input.num{width:110px;text-align:right}
+tr.hl td{background:rgba(255,192,0,.35)}tr.sv td{background:rgba(146,208,80,.35)}
+.bad{color:var(--bad);font-weight:600}
+.sm{font-size:12px;color:var(--mu)}.gr{background:rgba(128,128,128,.4)}td input.m{width:84px;text-align:right}
+.f{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px;margin-bottom:10px}
+.f label{display:flex;flex-direction:column;font-size:12px;color:var(--mu);gap:2px}
+.f input,.f select{width:100%}
+td input{width:100%;border:0;padding:2px 4px;background:transparent}
+@media print{header,.bar,.noprint{display:none!important}body{background:#fff;color:#000}.wrap{border:0;padding:0}td input{color:#000}:root{--card:#fff;--tx:#000;--bd:#000;--hd:#fff}}
+</style></head><body>
+<header class="noprint"><b>SPPD Desa</b>
+<button data-t="sppd">SPPD</button><button data-t="rak">RAK</button><button data-t="pagu">Pagu / Uraian</button><button data-t="set">Pengaturan</button><span id="st" class="sm"></span><button onclick="SB.auth.signOut().then(function(){location.reload()})">Keluar</button></header>
+<main id="app"></main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script>
+var tab="sppd",selS="ADD",selP=null,S;
+function seed(){return{desa:"Kadakajaya",kec:"Tanjungsari",tahun:2026,sumber:[{k:"DDS",n:"Dana Desa"},{k:"ADD",n:"Alokasi Dana Desa"},{k:"BHPRD",n:"Bagi Hasil Pajak dan Retribusi Daerah"},{k:"BKP",n:"Bantuan Keuangan Provinsi"},{k:"BKK",n:"Bantuan Keuangan Kabupaten/Kota"},{k:"PAD",n:"Pendapatan Asli Desa"}],items:[],cair:[],rak:{}}}
+var SB=supabase.createClient("https://rhhhfekrsdecwnfgfvsq.supabase.co","sb_publishable_35IpJHc4fzKb1esWZ0biyQ_7qtCt4oi"),sbT=null,busy=false,again=false;
+function setSt(t,bad){var e=document.getElementById("st");if(e){e.textContent=t;e.style.color=bad?"var(--bad)":"var(--mu)"}}
+function save(){clearTimeout(sbT);setSt("Menyimpan...");sbT=setTimeout(push,700)}
+async function push(){
+if(busy){again=true;return}busy=true;var ok=true;
+try{var A=function(r){if(r.error)throw r.error;return r.data},T=function(t){return SB.from(t)};
+A(await T("pengaturan").upsert({id:1,desa:S.desa,kecamatan:S.kec,tahun:S.tahun}));
+A(await T("sumber").upsert(S.sumber.map(function(x){return{kode:x.k,nama:x.n}})));
+var it=S.items.map(function(x,i){return{id:x.id,sumber:x.s,uraian:x.u,pagu:x.p,silva:!!x.silva,urut:i}});
+if(it.length)A(await T("item").upsert(it));
+var rk=[];S.items.forEach(function(x){var a=S.rak[x.id];if(a)for(var m=0;m<12;m++)rk.push({item_id:x.id,bulan:m+1,jumlah:a[m]||0})});
+if(rk.length)A(await T("rak").upsert(rk,{onConflict:"item_id,bulan"}));
+var pc=S.cair.map(function(c){return{id:c.id,sumber:c.s,tgl:c.tgl,perubahan:!!c.prb,saldo:c.saldo||0,nb:c.nb||""}});
+if(pc.length)A(await T("pencairan").upsert(pc));
+var ids=S.items.map(function(x){return x.id}),pi=[];
+S.cair.forEach(function(c){for(var k in c.req)if(ids.includes(k))pi.push({pencairan_id:c.id,item_id:k,jumlah:c.req[k]||0})});
+if(pi.length)A(await T("pencairan_item").upsert(pi,{onConflict:"pencairan_id,item_id"}));
+var cids=S.cair.map(function(c){return c.id});
+var gc=A(await T("pencairan").select("id")).map(function(r){return r.id}).filter(function(i){return !cids.includes(i)});
+if(gc.length)A(await T("pencairan").delete().in("id",gc));
+var gi=A(await T("item").select("id")).map(function(r){return r.id}).filter(function(i){return !ids.includes(i)});
+if(gi.length){A(await T("pencairan_item").delete().in("item_id",gi));A(await T("item").delete().in("id",gi))}
+var ks=S.sumber.map(function(x){return x.k});
+var gs=A(await T("sumber").select("kode")).map(function(r){return r.kode}).filter(function(k){return !ks.includes(k)});
+if(gs.length)A(await T("sumber").delete().in("kode",gs));
+}catch(e){ok=false;setSt("Gagal menyimpan: "+(e.message||e),1)}
+busy=false;if(again){again=false;push()}else if(ok)setSt("Tersimpan")}
+async function load(){
+var r=await Promise.all(["pengaturan","sumber","item","rak","pencairan","pencairan_item"].map(function(t){return SB.from(t).select("*")}));
+for(var i=0;i<r.length;i++)if(r[i].error)throw r[i].error;
+var P=r[0].data[0],d=seed(),z=function(){return[0,0,0,0,0,0,0,0,0,0,0,0]};
+S={desa:P?P.desa:d.desa,kec:P?P.kecamatan:d.kec,tahun:P?P.tahun:d.tahun,
+sumber:r[1].data.length?r[1].data.sort(function(a,b){return a.kode<b.kode?-1:1}).map(function(x){return{k:x.kode,n:x.nama}}):d.sumber,
+items:r[2].data.sort(function(a,b){return(a.urut||0)-(b.urut||0)}).map(function(x){return{id:x.id,s:x.sumber,u:x.uraian,p:x.pagu,silva:x.silva}}),
+rak:{},cair:r[4].data.map(function(x){return{id:x.id,s:x.sumber,tgl:x.tgl,prb:x.perubahan,saldo:x.saldo,nb:x.nb||"",req:{}}})};
+r[3].data.forEach(function(x){(S.rak[x.item_id]=S.rak[x.item_id]||z())[x.bulan-1]=x.jumlah});
+r[5].data.forEach(function(x){var c=S.cair.find(function(c){return c.id==x.pencairan_id});if(c)c.req[x.item_id]=x.jumlah});
+if(!r[1].data.length||!P)save()}
+async function start(){
+if(S&&sbT){clearTimeout(sbT);sbT=null;await push()}
+document.querySelector("header").style.display="";$a().innerHTML="<p>Memuat data...</p>";
+try{await load();render();setSt("Terhubung")}catch(e){$a().innerHTML='<div class="wrap bad">Gagal memuat data: '+esc(e.message||e)+"<br>Pastikan skema SQL sudah dijalankan di Supabase.</div>"}}
+async function boot(){
+document.querySelector("header").style.display="none";
+var g=await SB.auth.getSession();if(g.data.session)return start();
+$a().innerHTML='<div class="wrap" style="max-width:340px;margin:40px auto"><h3 style="margin-top:0">Masuk SPPD Desa</h3><form onsubmit="doLogin();return false"><div class="f" style="grid-template-columns:1fr"><label>Email<input id="em" type="email" required></label><label>Password<input id="pw" type="password" required></label></div><button class="p" style="width:100%">Masuk</button></form><p id="lm" class="bad"></p></div>'}
+async function doLogin(){
+var r=await SB.auth.signInWithPassword({email:document.getElementById("em").value,password:document.getElementById("pw").value});
+if(r.error)document.getElementById("lm").textContent="Gagal masuk: "+r.error.message;else start()}
+function renK(i,v){v=v.trim().toUpperCase();var o=S.sumber[i].k;
+if(!v||S.sumber.some(function(x,j){return j!=i&&x.k==v})){alert("Kode kosong atau sudah dipakai");render();return}
+S.items.forEach(function(x){if(x.s==o)x.s=v});S.cair.forEach(function(c){if(c.s==o)c.s=v});
+S.sumber[i].k=v;if(selS==o)selS=v;save();render()}
+function cum(id,mo){var a=(S.rak&&S.rak[id])||[],t=0;for(var i=0;i<mo;i++)t+=a[i]||0;return t}
+function setRak(id,m,v){if(!S.rak[id])S.rak[id]=[0,0,0,0,0,0,0,0,0,0,0,0];S.rak[id][m]=num(v);save();render()}
+function noSurat(c){var n=cairS(c.s).findIndex(function(x){return x.id==c.id})+1;return"900/"+(n<10?"0":"")+n+"/SPPD-"+c.s+(c.prb?"-PRB":"")+"/"+rom(+c.tgl.slice(5,7))+"/"+c.tgl.slice(0,4)}
+function fmt(n){return n?Number(n).toLocaleString("id-ID"):"-"}
+function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
+function num(v){return parseInt(String(v).replace(/\D/g,""))||0}
+function tgl(d){var b=["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"],x=d.split("-");return x[2]*1+" "+b[x[1]-1]+" "+x[0]}
+function rom(m){return["I","II","III","IV","V","VI","VII","VIII","IX","X","XI","XII"][m-1]}
+function cairS(s){return S.cair.filter(function(c){return c.s==s}).sort(function(a,b){return a.tgl<b.tgl?-1:a.tgl>b.tgl?1:a.id<b.id?-1:1})}
+function sumber(k){return S.sumber.find(function(x){return x.k==k})||{k:k,n:k}}
+function render(){
+document.querySelectorAll("header button[data-t]").forEach(function(b){b.className=b.dataset.t==tab?"on":""});
+$a().innerHTML=tab=="sppd"?vSppd():tab=="rak"?vRak():tab=="pagu"?vPagu():vSet()}
+function $a(){return document.getElementById("app")}
+function srcSel(){return'<select onchange="selS=this.value;selP=null;render()">'+S.sumber.map(function(x){return'<option value="'+x.k+'"'+(x.k==selS?" selected":"")+">"+esc(x.k+" - "+x.n)+"</option>"}).join("")+"</select>"}
+function vSppd(){
+var L=cairS(selS),cur=L.find(function(c){return c.id==selP})||L[L.length-1],items=S.items.filter(function(i){return i.s==selS}),h='<div class="bar noprint">'+srcSel();
+if(cur){selP=cur.id;h+='<select onchange="selP=this.value;render()">'+L.map(function(c,i){return'<option value="'+c.id+'"'+(c.id==cur.id?" selected":"")+">Tahap "+(i+1)+" - "+tgl(c.tgl)+"</option>"}).join("")+"</select>"}
+h+='<button class="p" onclick="newP()">+ Tahap baru</button>';
+if(cur)h+='<button onclick="window.print()">Cetak / PDF</button><button class="d" onclick="delP()">Hapus tahap</button>';
+h+="</div>";
+if(!cur)return h+'<div class="wrap">Belum ada pencairan untuk sumber dana ini. Klik "+ Tahap baru".'+(items.length?"":" Isi dulu uraian dan pagu di menu Pagu / Uraian.")+"</div>";
+var idx=L.indexOf(cur),prev=L.slice(0,idx),T=[0,0,0,0,0],murni=0,silva=0,mo=+cur.tgl.slice(5,7),rows="";
+items.forEach(function(it,i){var lalu=0;prev.forEach(function(c){lalu+=c.req[it.id]||0});var now=cur.req[it.id]||0,jml=lalu+now,sisa=it.p-jml,mx=Math.max(0,Math.min(it.p,cum(it.id,mo))-lalu),bad=sisa<0||now>mx;
+T[0]+=it.p;T[1]+=lalu;T[2]+=now;T[3]+=jml;T[4]+=sisa;if(it.silva)silva+=it.p;else murni+=it.p;
+rows+='<tr class="'+(it.silva?"sv":"")+'"><td class="c">'+(i+1)+"</td><td>"+esc(it.u)+'</td><td class="n">'+fmt(it.p)+'</td><td class="n">'+fmt(lalu)+'</td><td class="n"><input class="num'+(bad?" bad":"")+'" value="'+(now?fmt(now):"")+'" placeholder="-" onchange="setReq(\''+it.id+'\',this.value)"><div class="sm noprint">maks '+fmt(mx)+'</div></td><td class="n">'+fmt(jml)+'</td><td class="n'+(bad?" bad":"")+'">'+fmt(sisa)+"</td></tr>"});
+var sisaKas=cur.saldo-T[2],warn=sisaKas<0;
+return h+'<div class="wrap"><div class="sheet"><h2>SURAT PERMINTAAN PENCAIRAN DANA (SPPD)</h2>'+
+'<p class="c">Nomor : '+noSurat(cur)+'</p>'+
+'<p class="c"><b>DESA '+esc(S.desa.toUpperCase())+" KECAMATAN "+esc(S.kec.toUpperCase())+"<br>SUMBER DANA: "+esc(sumber(selS).n.toUpperCase())+" ("+esc(selS)+")<br>TAHUN ANGGARAN "+S.tahun+'</b></p>'+
+'<p class="noprint sm">Tanggal pencairan: <input type="date" value="'+cur.tgl+'" onchange="upd(\'tgl\',this.value);render()"> <label><input type="checkbox" style="width:auto"'+(cur.prb?" checked":"")+' onchange="upd(\'prb\',this.checked);render()"> SPPD Perubahan (-PRB)</label></p>'+
+'<p style="color:#d00;font-style:italic;font-weight:600;margin:4px 0">Pencairan Tanggal : '+tgl(cur.tgl)+"</p>"+
+'<table><tr><th>NO</th><th>URAIAN</th><th>PAGU (Rp.)</th><th>PENCAIRAN S.D YANG LALU (Rp.)</th><th>PERMINTAAN SEKARANG (Rp.)</th><th>JUMLAH S.D SAAT INI (Rp.)</th><th>SISA DANA (Rp.)</th></tr>'+rows+
+'<tr><th colspan="2">JUMLAH (Rp.)</th>'+T.map(function(v){return'<th class="n">'+fmt(v)+"</th>"}).join("")+"</tr></table>"+
+'<table style="margin-top:6px;width:auto"><tr><td>Murni</td><td class="n">'+fmt(murni)+"</td><td>Silva</td><td class=\"n\">"+fmt(silva)+'</td></tr><tr><td>Saldo '+esc(selS)+'</td><td class="n"><input class="num" value="'+(cur.saldo?fmt(cur.saldo):"")+'" placeholder="isi saldo kas" onchange="upd(\'saldo\',num(this.value));render()"></td><td>Sisa</td><td class="n'+(warn?" bad":"")+'">'+fmt(sisaKas)+"</td></tr></table>"+
+(warn?'<p class="bad noprint">Permintaan melebihi saldo kas.</p>':"")+
+'<p style="margin-bottom:2px">NB :</p><textarea style="width:100%;min-height:50px;font:inherit;background:transparent;color:inherit;border:1px dashed var(--bd)" onchange="upd(\'nb\',this.value)">'+esc(cur.nb)+"</textarea></div></div>"+
+'<p class="sm noprint">Merah = permintaan melebihi sisa pagu. Baris hijau = dana Silva. Data tersimpan otomatis di browser ini.</p>'}
+function vRak(){var items=S.items.filter(function(i){return i.s==selS}),B=["JAN","FEB","MAR","APR","MEI","JUN","JUL","AGU","SEP","OKT","NOV","DES"],tot=[],gt=0,gp=0,i;
+for(i=0;i<12;i++)tot.push(0);
+var rows=items.map(function(it,n){var a=S.rak[it.id]||[],s=0,tds="";
+for(i=0;i<12;i++){var v=a[i]||0;s+=v;tot[i]+=v;tds+='<td class="n'+(v?"":" gr")+'"><input class="m" value="'+(v?fmt(v):"")+'" placeholder="-" onchange="setRak(\''+it.id+'\','+i+',this.value)"></td>'}
+gt+=s;gp+=it.p;
+return'<tr><td class="c">'+(n+1)+"</td><td>"+esc(it.u)+'</td><td class="n">'+fmt(it.p)+"</td>"+tds+'<td class="n'+(s!=it.p?" bad":"")+'">'+fmt(s)+"</td></tr>"}).join("");
+return'<div class="bar">'+srcSel()+'<button onclick="window.print()">Cetak / PDF</button></div><div class="wrap"><h2 class="c" style="text-decoration:underline">RENCANA ANGGARAN KAS DESA</h2><p class="c" style="color:#d00;font-weight:600">SUMBER ANGGARAN : '+esc(sumber(selS).n.toUpperCase())+'</p><p class="c"><b>DESA '+esc(S.desa.toUpperCase())+" KECAMATAN "+esc(S.kec.toUpperCase())+"<br>TAHUN ANGGARAN "+S.tahun+'</b></p><div style="overflow-x:auto"><table style="min-width:1250px"><tr><th>NO</th><th>URAIAN</th><th>PAGU (Rp.)</th>'+B.map(function(b){return"<th>"+b+"</th>"}).join("")+'<th>JUMLAH RAK</th></tr>'+rows+'<tr><th colspan="2">JUMLAH (Rp.)</th><th class="n">'+fmt(gp)+"</th>"+tot.map(function(v){return'<th class="n">'+fmt(v)+"</th>"}).join("")+'<th class="n">'+fmt(gt)+'</th></tr></table></div></div><p class="sm noprint">Sel abu-abu = tidak ada rencana, sehingga tidak bisa dicairkan di bulan itu. Jumlah RAK merah = tidak sama dengan pagu di menu Pagu / Uraian. Pencairan di SPPD dibatasi RAK kumulatif s.d. bulan tanggal pencairan.</p>'}
+function vPagu(){
+var items=S.items.filter(function(i){return i.s==selS});
+return'<div class="bar">'+srcSel()+'<button class="p" onclick="addI()">+ Tambah uraian</button></div><div class="wrap"><table><tr><th>No</th><th>Uraian</th><th>Pagu (Rp.)</th><th>Silva</th><th></th></tr>'+
+items.map(function(it,i){return"<tr><td class=\"c\">"+(i+1)+'</td><td><input value="'+esc(it.u)+'" onchange="setI(\''+it.id+'\',\'u\',this.value)"></td><td><input class="num" style="text-align:right" value="'+fmt(it.p)+'" onchange="setI(\''+it.id+'\',\'p\',num(this.value));render()"></td><td class="c"><input type="checkbox" style="width:auto"'+(it.silva?" checked":"")+' onchange="setI(\''+it.id+'\',\'silva\',this.checked)"></td><td><button class="d" onclick="delI(\''+it.id+'\')">Hapus</button></td></tr>'}).join("")+
+'<tr><th colspan="2">Total pagu</th><th class="n">'+fmt(items.reduce(function(a,b){return a+b.p},0))+"</th><th></th><th></th></tr></table></div>"}
+function vSet(){
+return'<div class="wrap"><div class="f"><label>Nama Desa<input value="'+esc(S.desa)+'" onchange="S.desa=this.value;save()"></label><label>Kecamatan<input value="'+esc(S.kec)+'" onchange="S.kec=this.value;save()"></label><label>Tahun Anggaran<input type="number" value="'+S.tahun+'" onchange="S.tahun=num(this.value);save()"></label></div>'+
+'<h4>Sumber dana (sesuai Siskeudes)</h4><table><tr><th>Kode</th><th>Nama</th></tr>'+S.sumber.map(function(x,i){return'<tr><td><input value="'+esc(x.k)+'" onchange="renK('+i+',this.value)"></td><td><input value="'+esc(x.n)+'" onchange="S.sumber['+i+'].n=this.value;save()"></td></tr>'}).join("")+'</table><p><button onclick="S.sumber.push({k:\'BARU\',n:\'Sumber dana baru\'});save();render()">+ Sumber dana</button></p>'+
+'<h4>Cadangan data</h4><button onclick="start()">Muat ulang dari server</button> <button onclick="bak()">Unduh cadangan (.json)</button> <label class="sm">Pulihkan: <input type="file" accept=".json" onchange="rst(this)"></label> <button class="d" onclick="if(confirm(\'Hapus SEMUA data di server?\')){S=seed();save();render()}">Hapus semua data</button></div>'}
+function upd(k,v){var c=S.cair.find(function(x){return x.id==selP});if(c){c[k]=v;save()}}
+function setReq(id,v){var c=S.cair.find(function(x){return x.id==selP}),it=S.items.find(function(i){return i.id==id}),lalu=0,n=num(v);
+cairS(c.s).filter(function(p){return p.tgl<c.tgl||(p.tgl==c.tgl&&p.id<c.id)}).forEach(function(p){lalu+=p.req[id]||0});
+var mx=Math.max(0,Math.min(it.p,cum(id,+c.tgl.slice(5,7)))-lalu);
+if(n>mx){alert("Tidak bisa dicairkan: "+it.u+"\nMaksimal "+fmt(mx)+" sesuai RAK s.d. bulan "+tgl(c.tgl).split(" ")[1]+" (dikurangi pencairan sebelumnya) dan pagu. Ubah RAK jika memang direncanakan.");n=mx}
+c.req[id]=n;save();render()}
+function newP(){var n=S.cair.length+1,d=new Date(),m=d.getMonth()+1,id=crypto.randomUUID(),iso=d.toISOString().slice(0,10);
+S.cair.push({id:id,s:selS,tgl:iso,req:{},saldo:0,nb:""});selP=id;save();render()}
+function delP(){if(confirm("Hapus tahap ini?")){S.cair=S.cair.filter(function(c){return c.id!=selP});selP=null;save();render()}}
+function addI(){S.items.push({id:crypto.randomUUID(),s:selS,u:"Uraian baru",p:0,silva:false});save();render()}
+function setI(id,k,v){S.items.find(function(i){return i.id==id})[k]=v;save()}
+function delI(id){if(confirm("Hapus uraian ini?")){S.items=S.items.filter(function(i){return i.id!=id});save();render()}}
+function bak(){var a=document.createElement("a");a.href="data:application/json;charset=utf-8,"+encodeURIComponent(JSON.stringify(S));a.download="sppd-cadangan.json";a.click()}
+function rst(el){var f=el.files[0];if(!f)return;var r=new FileReader();r.onload=function(){try{S=JSON.parse(r.result);save();render()}catch(e){alert("File tidak valid")}};r.readAsText(f)}
+document.querySelectorAll("header button[data-t]").forEach(function(b){b.onclick=function(){tab=b.dataset.t;render()}});
+boot();
+</script></body></html>
