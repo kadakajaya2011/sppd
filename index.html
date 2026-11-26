@@ -31,12 +31,10 @@ tr.hl td{background:rgba(255,192,0,.35)}tr.sv td{background:rgba(146,208,80,.35)
 .f input,.f select{width:100%}
 td input{width:100%;border:0;padding:2px 4px;background:transparent}
 @media print{header,.bar,.noprint{display:none!important}body{background:#fff;color:#000}.wrap{border:0;padding:0}td input{color:#000}:root{--card:#fff;--tx:#000;--bd:#000;--hd:#fff}}
-@page{size:215mm 330mm;margin:10mm}
-@page rak{size:330mm 215mm;margin:8mm}
-.rakw{page:rak}
 @media print{.rakx{overflow:visible!important}.rakt{min-width:0!important;width:100%;table-layout:fixed;font-size:9px}.rakt th,.rakt td{padding:2px 3px;font-size:9px}.rakt input.m{width:100%;font-size:9px;padding:0;border:0}.rakt th:nth-child(2),.rakt td:nth-child(2){width:20%}.gr{background:#bbb!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.sheet{min-width:0!important}}
 .kop{display:flex;align-items:center;gap:12px}.kop img{width:86px;height:88px;object-fit:contain}.kt{flex:1;text-align:center;line-height:1.25;padding-right:86px}.k1{font-size:16px}.k2{font-size:20px;font-weight:700}.k3{font-size:10.5px}.kl{border-top:4px solid var(--tx);border-bottom:1px solid var(--tx);height:3px;margin:6px 0 12px}
-</style></head><body>
+@media print{html,body{height:auto!important;margin:0!important;padding:0!important}:root{padding:0!important}main{padding:0!important;max-width:none!important}.wrap{overflow:visible!important;margin:0!important}.sheet>:last-child{margin-bottom:0!important}textarea{min-height:0!important;resize:none;border:0!important}}
+</style><style id="pg"></style></head><body>
 <header class="noprint"><b>SPPD Desa</b>
 <button data-t="sppd">SPPD</button><button data-t="rak">RAK</button><button data-t="pagu">Pagu / Uraian</button><button data-t="set">Pengaturan</button><span id="st" class="sm"></span><button onclick="SB.auth.signOut().then(function(){location.reload()})">Keluar</button></header>
 <main id="app"></main>
@@ -111,6 +109,7 @@ function rom(m){return["I","II","III","IV","V","VI","VII","VIII","IX","X","XI","
 function cairS(s){return S.cair.filter(function(c){return c.s==s}).sort(function(a,b){return a.tgl<b.tgl?-1:a.tgl>b.tgl?1:a.id<b.id?-1:1})}
 function sumber(k){return S.sumber.find(function(x){return x.k==k})||{k:k,n:k}}
 function render(){
+document.getElementById("pg").textContent=tab=="rak"?"@page{size:330mm 215mm;margin:8mm}":"@page{size:215mm 330mm;margin:10mm}";
 document.querySelectorAll("header button[data-t]").forEach(function(b){b.className=b.dataset.t==tab?"on":""});
 $a().innerHTML=tab=="sppd"?vSppd():tab=="rak"?vRak():tab=="tt"?vTt():tab=="pagu"?vPagu():vSet()}
 function $a(){return document.getElementById("app")}
